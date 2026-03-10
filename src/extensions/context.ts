@@ -8,15 +8,30 @@ const FRONTMATTER_NODES = new Set(["YAMLFrontMatter"]);
 /**
  * Returns true if the given position is inside a code block
  * (fenced or indented) by walking up the syntax tree parent chain.
+ * Falls back to text-based detection for cases where the syntax tree
+ * hasn't fully parsed yet (e.g., unclosed code blocks).
  */
 export function isInCodeBlock(state: EditorState, pos: number): boolean {
+  // Primary: syntax tree check
   let node = syntaxTree(state).resolveInner(pos, -1);
   while (node) {
     if (CODE_BLOCK_NODES.has(node.name)) return true;
     if (!node.parent) break;
     node = node.parent;
   }
-  return false;
+
+  // Fallback: text-based fenced code block detection
+  // Count opening ``` fences before this position. If odd, we're inside one.
+  const doc = state.doc;
+  const line = doc.lineAt(pos);
+  let fenceCount = 0;
+  for (let i = 1; i < line.number; i++) {
+    const lineText = doc.line(i).text;
+    if (/^(`{3,}|~{3,})/.test(lineText.trim())) {
+      fenceCount++;
+    }
+  }
+  return fenceCount % 2 === 1;
 }
 
 /**
