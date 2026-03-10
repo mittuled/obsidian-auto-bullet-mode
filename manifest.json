@@ -1,0 +1,9 @@
+{
+  "id": "auto-bullet-mode",
+  "name": "Auto Bullet Mode",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Automatically inserts bullet prefixes on new lines for an always-on outliner experience",
+  "author": "mittuled",
+  "isDesktopOnly": false
+}
