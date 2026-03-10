@@ -5,6 +5,13 @@
 **Status**: Draft
 **Input**: User description: "Create an Obsidian plugin that automatically keeps using bullets and outline mode. Essentially, I should not need to do a '- ' to start bullets. They should be on by default."
 
+## Clarifications
+
+### Session 2026-03-10
+
+- Q: Should the plugin support Obsidian mobile in addition to desktop? → A: Yes, support both desktop and mobile (`isDesktopOnly: false`). Status bar indicator is desktop only.
+- Q: Should the plugin work in both Live Preview and Source editing modes? → A: Live Preview only. Source mode is out of scope for v1.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Auto-Bullet on Every New Line (Priority: P1)
@@ -65,6 +72,7 @@ As a user working in outline mode, I can use Tab and Shift+Tab to indent and out
 - What happens when the user pastes multi-line text? Pasted text MUST NOT be auto-modified with bullet prefixes. Only newly typed lines get bullets.
 - What happens with numbered lists (`1.`)? If the user manually types a number prefix, auto-bullet MUST yield to the user's intent and not add a "- " prefix.
 - What happens on lines that already have a bullet prefix? The plugin MUST NOT double-prefix (no "- - " lines).
+- What happens in Source editing mode? Auto-bullet MUST NOT activate in Source mode; it only operates in Live Preview.
 
 ## Requirements *(mandatory)*
 
@@ -82,6 +90,8 @@ As a user working in outline mode, I can use Tab and Shift+Tab to indent and out
 - **FR-010**: The plugin MUST preserve existing indentation levels when creating new bullet lines after indented bullets.
 - **FR-011**: The plugin MUST display a visual indicator (status bar on desktop) showing whether auto-bullet mode is currently active.
 - **FR-012**: The plugin MUST default to auto-bullet mode being enabled on first install.
+- **FR-013**: The plugin MUST work on both desktop and mobile Obsidian (`isDesktopOnly: false`). The status bar indicator is a desktop-only enhancement.
+- **FR-014**: The plugin MUST operate in Live Preview editing mode. Source mode is out of scope for v1.
 
 ### Key Entities
 
@@ -92,7 +102,7 @@ As a user working in outline mode, I can use Tab and Shift+Tab to indent and out
 
 - The bullet prefix format is `- ` (hyphen + space), matching Obsidian's default unordered list syntax.
 - Auto-bullet mode is a global toggle, not per-note. This keeps the UX simple for v1.
-- The plugin works with Obsidian's current editor (CodeMirror-based). No support for the legacy editor.
+- The plugin works with Obsidian's current editor (CodeMirror-based) in Live Preview mode. Source mode and the legacy editor are out of scope.
 - Indentation uses Obsidian's configured tab size (typically Tab or spaces as per user settings).
 
 ## Success Criteria *(mandatory)*
