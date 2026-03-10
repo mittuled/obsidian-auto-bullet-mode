@@ -48,6 +48,30 @@ describe("Context Detection", () => {
       const state = EditorState.create({ doc: "normal text" });
       expect(isInCodeBlock(state, 3)).toBe(false);
     });
+
+    it("returns true via text fallback when syntax tree misses fenced code block", () => {
+      // Syntax tree says Document (not parsed yet), but text shows we're inside ```
+      const node = makeNode("Document");
+      __setMockTree({ resolveInner: () => node });
+      const state = EditorState.create({ doc: "```\n\n```" });
+      // Position 4 is on line 2 (empty line inside code block)
+      expect(isInCodeBlock(state, 4)).toBe(true);
+    });
+
+    it("returns false via text fallback when outside fenced code block", () => {
+      const node = makeNode("Document");
+      __setMockTree({ resolveInner: () => node });
+      const state = EditorState.create({ doc: "```\ncode\n```\nnormal text" });
+      // Position is on line 4 (after closing fence)
+      expect(isInCodeBlock(state, 18)).toBe(false);
+    });
+
+    it("returns true via text fallback with tilde fences", () => {
+      const node = makeNode("Document");
+      __setMockTree({ resolveInner: () => node });
+      const state = EditorState.create({ doc: "~~~\n\n~~~" });
+      expect(isInCodeBlock(state, 4)).toBe(true);
+    });
   });
 
   describe("isInFrontmatter", () => {

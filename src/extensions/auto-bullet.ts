@@ -3,11 +3,13 @@ import { isInCodeBlock, isInFrontmatter, isLivePreview } from "./context";
 
 const BULLET_RE = /^(\s*)-\s/;
 const BLOCK_SYNTAX_RE = /^(#{1,6}\s|>\s|\d+\.\s)/;
+const CHECKBOX_PATTERN_RE = /^(\s*)-\st\s*$/;
 
 /**
  * Creates a CM6 inputHandler extension that auto-inserts "- " prefix
  * when the user types a single character on an empty line in Live Preview.
  * Matches indentation of the previous bullet line if one exists.
+ * Also handles "t " → "[ ] " checkbox shortcut.
  */
 export function createAutoBulletInputHandler() {
   return EditorView.inputHandler.of(
@@ -27,8 +29,29 @@ export function createAutoBulletInputHandler() {
 
       const line = state.doc.lineAt(from);
 
-      // Only trigger on empty lines
+      // Checkbox shortcut: "- t" + space → "- [ ] "
+      if (text === " " && CHECKBOX_PATTERN_RE.test(line.text)) {
+        const match = line.text.match(/^(\s*)-\s/);
+        const indent = match ? match[1] : "";
+        const newText = indent + "- [ ] ";
+        view.dispatch({
+          changes: {
+            from: line.from,
+            to: line.to,
+            insert: newText,
+          },
+          selection: {
+            anchor: line.from + newText.length,
+          },
+        });
+        return true;
+      }
+
+      // Only trigger auto-bullet on empty lines
       if (line.text.trim() !== "") return false;
+
+      // Exclude "/" for Obsidian slash commands
+      if (text === "/") return false;
 
       // Check if this character starts a block-level syntax
       if (BLOCK_SYNTAX_RE.test(text + " ")) return false;
