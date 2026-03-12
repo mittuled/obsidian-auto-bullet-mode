@@ -1,5 +1,5 @@
 import { Prec } from "@codemirror/state";
-import { keymap } from "@codemirror/view";
+import { EditorView, keymap } from "@codemirror/view";
 import { isInCodeBlock, isLivePreview } from "./context";
 
 const BULLET_RE = /^(\s*)-\s/;
@@ -13,7 +13,7 @@ export function createBulletEnterHandler() {
     keymap.of([
       {
         key: "Enter",
-        run(view: any): boolean {
+        run(view: EditorView): boolean {
           const state = view.state;
 
           // Guard: Live Preview only

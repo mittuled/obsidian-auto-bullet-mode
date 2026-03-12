@@ -213,3 +213,101 @@ describe("Auto-Bullet InputHandler", () => {
     expect(result).toBe(false);
   });
 });
+
+describe("Configurable checkbox shortcut", () => {
+  let dispatched: any[];
+
+  afterEach(() => {
+    __setMockTree(null);
+  });
+
+  function makeView(state: EditorState) {
+    return {
+      state,
+      dispatch: (...args: any[]) => dispatched.push(...args),
+    };
+  }
+
+  function getHandler(shortcut: string) {
+    const ext = createAutoBulletInputHandler(shortcut);
+    return ext.handler;
+  }
+
+  beforeEach(() => {
+    dispatched = [];
+  });
+
+  it("triggers checkbox on custom shortcut char 'x'", () => {
+    const handler = getHandler("x");
+    const state = makeLivePreviewState("- x", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(true);
+    expect(dispatched[0].changes.insert).toBe("- [ ] ");
+  });
+
+  it("does NOT trigger on old default 't' when shortcut is 'x'", () => {
+    const handler = getHandler("x");
+    const state = makeLivePreviewState("- t", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(false);
+  });
+
+  it("default 't' still works when explicitly passed", () => {
+    const handler = getHandler("t");
+    const state = makeLivePreviewState("- t", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(true);
+    expect(dispatched[0].changes.insert).toBe("- [ ] ");
+  });
+
+  it("is case-sensitive: 'T' does not trigger when shortcut is 't'", () => {
+    const handler = getHandler("t");
+    const state = makeLivePreviewState("- T", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(false);
+  });
+
+  it("uppercase shortcut 'T' triggers on '- T'", () => {
+    const handler = getHandler("T");
+    const state = makeLivePreviewState("- T", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(true);
+    expect(dispatched[0].changes.insert).toBe("- [ ] ");
+  });
+
+  it("disables checkbox shortcut when empty string passed", () => {
+    const handler = getHandler("");
+    const state = makeLivePreviewState("- t", 3);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 3, 3, " ");
+    expect(result).toBe(false);
+  });
+
+  it("auto-bullet still works when checkbox shortcut is disabled", () => {
+    const handler = getHandler("");
+    const state = makeLivePreviewState("", 0);
+    const view = makeView(state);
+    __setMockTree({ resolveInner: () => makeNode("Document") });
+
+    const result = handler(view, 0, 0, "a");
+    expect(result).toBe(true);
+    expect(dispatched[0].changes.insert).toBe("- a");
+  });
+});

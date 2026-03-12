@@ -20,7 +20,7 @@ export default class AutoBulletPlugin extends Plugin {
       this.statusBar = new StatusBarManager(statusBarEl, () => {
         this.toggleExtensions(!this.settings.autoBulletEnabled);
         this.settings.autoBulletEnabled = !this.settings.autoBulletEnabled;
-        this.saveSettings();
+        void this.saveSettings();
         this.statusBar?.update(this.settings.autoBulletEnabled);
       });
       this.statusBar.update(this.settings.autoBulletEnabled);
@@ -28,12 +28,12 @@ export default class AutoBulletPlugin extends Plugin {
 
     // Toggle command
     this.addCommand({
-      id: "toggle-auto-bullet-mode",
-      name: "Toggle Auto Bullet Mode",
+      id: "toggle",
+      name: "Toggle mode",
       callback: () => {
         this.settings.autoBulletEnabled = !this.settings.autoBulletEnabled;
         this.toggleExtensions(this.settings.autoBulletEnabled);
-        this.saveSettings();
+        void this.saveSettings();
         this.statusBar?.update(this.settings.autoBulletEnabled);
       },
     });
@@ -62,7 +62,7 @@ export default class AutoBulletPlugin extends Plugin {
   enableExtensions(): void {
     if (this.extensions.length > 0) return; // Already enabled
     this.extensions.push(
-      createAutoBulletInputHandler(),
+      createAutoBulletInputHandler(this.settings.checkboxShortcut),
       createBulletEnterHandler(),
     );
     this.app.workspace.updateOptions();
@@ -71,6 +71,12 @@ export default class AutoBulletPlugin extends Plugin {
   disableExtensions(): void {
     this.extensions.length = 0;
     this.app.workspace.updateOptions();
+  }
+
+  rebuildExtensions(): void {
+    if (this.extensions.length === 0) return;
+    this.disableExtensions();
+    this.enableExtensions();
   }
 
   async loadSettings(): Promise<void> {

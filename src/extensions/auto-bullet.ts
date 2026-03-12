@@ -3,17 +3,26 @@ import { isInCodeBlock, isInFrontmatter, isLivePreview } from "./context";
 
 const BULLET_RE = /^(\s*)-\s/;
 const BLOCK_SYNTAX_RE = /^(#{1,6}\s|>\s|\d+\.\s)/;
-const CHECKBOX_PATTERN_RE = /^(\s*)-\st\s*$/;
+
+function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function buildCheckboxPattern(char: string): RegExp | null {
+  if (!char) return null;
+  return new RegExp("^(\\s*)-\\s" + escapeRegex(char) + "\\s*$");
+}
 
 /**
  * Creates a CM6 inputHandler extension that auto-inserts "- " prefix
  * when the user types a single character on an empty line in Live Preview.
  * Matches indentation of the previous bullet line if one exists.
- * Also handles "t " → "[ ] " checkbox shortcut.
+ * Also handles configurable checkbox shortcut (e.g., "t " → "[ ] ").
  */
-export function createAutoBulletInputHandler() {
+export function createAutoBulletInputHandler(checkboxShortcut = "t") {
+  const checkboxPatternRe = buildCheckboxPattern(checkboxShortcut);
   return EditorView.inputHandler.of(
-    (view: any, from: number, to: number, text: string): boolean => {
+    (view: EditorView, from: number, to: number, text: string): boolean => {
       // Only respond to single-character typed input (excludes paste)
       if (text.length !== 1) return false;
 
@@ -29,8 +38,8 @@ export function createAutoBulletInputHandler() {
 
       const line = state.doc.lineAt(from);
 
-      // Checkbox shortcut: "- t" + space → "- [ ] "
-      if (text === " " && CHECKBOX_PATTERN_RE.test(line.text)) {
+      // Checkbox shortcut: e.g. "- t" + space → "- [ ] "
+      if (text === " " && checkboxPatternRe && checkboxPatternRe.test(line.text)) {
         const match = line.text.match(/^(\s*)-\s/);
         const indent = match ? match[1] : "";
         const newText = indent + "- [ ] ";
