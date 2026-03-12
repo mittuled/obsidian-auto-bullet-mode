@@ -28,8 +28,20 @@ var import_obsidian3 = require("obsidian");
 // src/settings.ts
 var import_obsidian = require("obsidian");
 var DEFAULT_SETTINGS = {
-  autoBulletEnabled: true
+  autoBulletEnabled: true,
+  checkboxShortcut: "t"
 };
+var CONFLICTING_CHARS = /* @__PURE__ */ new Set(["/", "#", ">", "`", " ", "	"]);
+function validateCheckboxShortcut(value) {
+  const char = value.slice(0, 1);
+  if (char === "")
+    return "";
+  if (CONFLICTING_CHARS.has(char))
+    return "";
+  if (!/^[a-zA-Z0-9]$/.test(char))
+    return "";
+  return char;
+}
 var AutoBulletSettingTab = class extends import_obsidian.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -38,12 +50,23 @@ var AutoBulletSettingTab = class extends import_obsidian.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: "Auto Bullet Mode" });
-    new import_obsidian.Setting(containerEl).setName("Enable Auto Bullet Mode").setDesc("Automatically insert bullet prefixes on new lines").addToggle(
+    new import_obsidian.Setting(containerEl).setName("Auto bullet mode").setHeading();
+    new import_obsidian.Setting(containerEl).setName("Enable auto bullet mode").setDesc("Automatically insert bullet prefixes on new lines").addToggle(
       (toggle) => toggle.setValue(this.plugin.settings.autoBulletEnabled).onChange(async (value) => {
         this.plugin.settings.autoBulletEnabled = value;
         await this.plugin.saveSettings();
         this.plugin.toggleExtensions(value);
+      })
+    );
+    new import_obsidian.Setting(containerEl).setName("Checkbox shortcut character").setDesc(
+      'Type this character after "- " then press space to create a checkbox. Leave empty to disable. Only single alphanumeric characters are allowed.'
+    ).addText(
+      (text) => text.setPlaceholder("t").setValue(this.plugin.settings.checkboxShortcut).onChange(async (value) => {
+        const validated = validateCheckboxShortcut(value);
+        this.plugin.settings.checkboxShortcut = validated;
+        text.setValue(validated);
+        await this.plugin.saveSettings();
+        this.plugin.rebuildExtensions();
       })
     );
   }
@@ -99,8 +122,16 @@ function isLivePreview(state) {
 // src/extensions/auto-bullet.ts
 var BULLET_RE = /^(\s*)-\s/;
 var BLOCK_SYNTAX_RE = /^(#{1,6}\s|>\s|\d+\.\s)/;
-var CHECKBOX_PATTERN_RE = /^(\s*)-\st\s*$/;
-function createAutoBulletInputHandler() {
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function buildCheckboxPattern(char) {
+  if (!char)
+    return null;
+  return new RegExp("^(\\s*)-\\s" + escapeRegex(char) + "\\s*$");
+}
+function createAutoBulletInputHandler(checkboxShortcut = "t") {
+  const checkboxPatternRe = buildCheckboxPattern(checkboxShortcut);
   return import_view.EditorView.inputHandler.of(
     (view, from, to, text) => {
       if (text.length !== 1)
@@ -112,7 +143,7 @@ function createAutoBulletInputHandler() {
         return false;
       }
       const line = state.doc.lineAt(from);
-      if (text === " " && CHECKBOX_PATTERN_RE.test(line.text)) {
+      if (text === " " && checkboxPatternRe && checkboxPatternRe.test(line.text)) {
         const match = line.text.match(/^(\s*)-\s/);
         const indent2 = match ? match[1] : "";
         const newText = indent2 + "- [ ] ";
@@ -242,19 +273,19 @@ var AutoBulletPlugin = class extends import_obsidian3.Plugin {
         var _a;
         this.toggleExtensions(!this.settings.autoBulletEnabled);
         this.settings.autoBulletEnabled = !this.settings.autoBulletEnabled;
-        this.saveSettings();
+        void this.saveSettings();
         (_a = this.statusBar) == null ? void 0 : _a.update(this.settings.autoBulletEnabled);
       });
       this.statusBar.update(this.settings.autoBulletEnabled);
     }
     this.addCommand({
-      id: "toggle-auto-bullet-mode",
-      name: "Toggle Auto Bullet Mode",
+      id: "toggle",
+      name: "Toggle mode",
       callback: () => {
         var _a;
         this.settings.autoBulletEnabled = !this.settings.autoBulletEnabled;
         this.toggleExtensions(this.settings.autoBulletEnabled);
-        this.saveSettings();
+        void this.saveSettings();
         (_a = this.statusBar) == null ? void 0 : _a.update(this.settings.autoBulletEnabled);
       }
     });
@@ -276,7 +307,7 @@ var AutoBulletPlugin = class extends import_obsidian3.Plugin {
     if (this.extensions.length > 0)
       return;
     this.extensions.push(
-      createAutoBulletInputHandler(),
+      createAutoBulletInputHandler(this.settings.checkboxShortcut),
       createBulletEnterHandler()
     );
     this.app.workspace.updateOptions();
@@ -284,6 +315,12 @@ var AutoBulletPlugin = class extends import_obsidian3.Plugin {
   disableExtensions() {
     this.extensions.length = 0;
     this.app.workspace.updateOptions();
+  }
+  rebuildExtensions() {
+    if (this.extensions.length === 0)
+      return;
+    this.disableExtensions();
+    this.enableExtensions();
   }
   async loadSettings() {
     this.settings = Object.assign(
